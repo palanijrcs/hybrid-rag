@@ -1,0 +1,35 @@
+# ============================================
+# Environment Variables & Sensitive Secrets
+# ============================================
+.env
+.env.*
+credentials.json
+*-service-account*.json
+*secret*.json
+*credential*.json
+
+# ============================================
+# Python Virtual Environment & Bytecode Cache
+# ============================================
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# ============================================
+# Vector Databases & Heavy Storage Artifacts
+# ============================================
+db/
+chroma/
+*.sqlite3
+data/vector_store/
+uploads/
+*.faiss
+*.pkl
+
+# ============================================
+# Streamlit Configuration & Local State
+# ============================================
+.streamlit/
