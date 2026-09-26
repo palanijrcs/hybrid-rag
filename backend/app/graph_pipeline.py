@@ -44,7 +44,7 @@ def process_pdf_to_knowledge_graph(pdf_path: Path) -> int:
         openai_api_key=OPENAI_API_KEY
     )
     llm_transformer = LLMGraphTransformer(llm=llm)
-    graph_documents = asyncio.run(llm_transformer.aconvert_to_graph_documents(chunks[:2]))
+    graph_documents = asyncio.run(llm_transformer.aconvert_to_graph_documents(chunks))
 
     graph = get_neo4j_graph()
     graph.add_graph_documents(graph_documents, baseEntityLabel=True, include_source=True)
