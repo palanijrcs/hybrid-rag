@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -31,7 +32,7 @@ def process_pdf_to_knowledge_graph(pdf_path: Path) -> int:
     loader = PyPDFLoader(str(pdf_path))
     raw_docs = loader.load()
 
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=150)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=3000, chunk_overlap=200)
     chunks = splitter.split_documents(raw_docs)
 
     if not chunks:
@@ -43,7 +44,7 @@ def process_pdf_to_knowledge_graph(pdf_path: Path) -> int:
         openai_api_key=OPENAI_API_KEY
     )
     llm_transformer = LLMGraphTransformer(llm=llm)
-    graph_documents = llm_transformer.convert_to_graph_documents(chunks)
+    graph_documents = asyncio.run(llm_transformer.aconvert_to_graph_documents(chunks[:2]))
 
     graph = get_neo4j_graph()
     graph.add_graph_documents(graph_documents, baseEntityLabel=True, include_source=True)

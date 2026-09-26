@@ -1,26 +1,25 @@
-from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import logging
+import threading
 
 from backend.app.config import DATA_DIR
 from backend.app.vector_pipeline import process_pdf_to_vector_db
 from backend.app.graph_pipeline import process_pdf_to_knowledge_graph
 from backend.app.hybrid_search import generate_hybrid_response
 
-app = FastAPI(
-    title="Hybrid RAG API",
-    description="Backend API powering Vector + Knowledge Graph Hybrid RAG",
-    version="1.0.0"
-)
+logger = logging.getLogger('uvicorn')
 
-# Enable CORS for Streamlit frontend
+app = FastAPI(title='Hybrid RAG API')
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=['*'],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=['*'],
+    allow_headers=['*'],
 )
 
 class QueryRequest(BaseModel):
@@ -31,61 +30,40 @@ class QueryResponse(BaseModel):
     vector_chunks: list[str]
     graph_triples: list[str]
 
-@app.get("/")
-def health_check():
-    return {"status": "ok", "message": "Hybrid RAG API is live and healthy"}
+def run_async_ingest(file_path: Path):
+    try:
+        logger.info(f'Starting vector indexing for {file_path.name}')
+        process_pdf_to_vector_db(file_path)
+        logger.info(f'Vector indexing complete for {file_path.name}')
+    except Exception as e:
+        logger.error(f'Vector error: {e}')
 
-@app.post("/upload")
+    try:
+        logger.info(f'Starting graph indexing for {file_path.name}')
+        process_pdf_to_knowledge_graph(file_path)
+        logger.info(f'Graph indexing complete for {file_path.name}')
+    except Exception as e:
+        logger.error(f'Graph error: {e}')
+
+@app.get('/')
+def health():
+    return {'status': 'ok'}
+
+@app.post('/upload')
 async def upload_document(file: UploadFile = File(...)):
-    """
-    Receives PDF, saves locally, then triggers both Vector and Graph ingestion pipelines.
-    """
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
-
     file_path = DATA_DIR / file.filename
-    
-    # Save the uploaded PDF to disk
-    try:
-        content = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(content)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+    content = await file.read()
+    with open(file_path, 'wb') as f:
+        f.write(content)
 
-    # 1. Ingest into Vector DB (FAISS)
-    try:
-        vector_count = process_pdf_to_vector_db(file_path)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Vector DB ingestion failed: {str(e)}")
+    threading.Thread(target=run_async_ingest, args=(file_path,), daemon=True).start()
+    return {'status': 'success', 'message': 'File received! Ingestion running in background.'}
 
-    # 2. Ingest into Knowledge Graph (Neo4j Aura)
-    try:
-        graph_count = process_pdf_to_knowledge_graph(file_path)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Knowledge Graph ingestion failed: {str(e)}")
-
-    return {
-        "status": "success",
-        "filename": file.filename,
-        "vector_chunks_indexed": vector_count,
-        "graph_documents_extracted": graph_count,
-    }
-
-@app.post("/query", response_model=QueryResponse)
+@app.post('/query', response_model=QueryResponse)
 def query_hybrid_rag(request: QueryRequest):
-    """
-    Retrieves facts from both Vector DB and Neo4j, synthesizes a single answer.
-    """
-    if not request.query.strip():
-        raise HTTPException(status_code=400, detail="Query cannot be empty.")
-
-    try:
-        result = generate_hybrid_response(request.query)
-        return QueryResponse(
-            answer=result["answer"],
-            vector_chunks=result["vector_chunks"],
-            graph_triples=result["graph_triples"]
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Retrieval error: {str(e)}")
+    result = generate_hybrid_response(request.query)
+    return QueryResponse(
+        answer=result['answer'],
+        vector_chunks=result['vector_chunks'],
+        graph_triples=result['graph_triples']
+    )

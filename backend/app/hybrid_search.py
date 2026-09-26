@@ -12,7 +12,7 @@ def generate_hybrid_response(query: str) -> dict:
     and uses an LLM to synthesize a single accurate answer.
     """
     # 1. Retrieve unstructured context from Vector Store
-    vector_chunks = search_vector_db(query, top_k=4)
+    vector_chunks = search_vector_db(query, top_k=8)
     vector_context = "\n\n".join(vector_chunks) if vector_chunks else "No vector context found."
 
     # 2. Retrieve structured triples from Knowledge Graph
