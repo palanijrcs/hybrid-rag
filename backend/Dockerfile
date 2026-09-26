@@ -14,7 +14,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 # Copy application source code
 COPY backend/ ./backend/
-COPY .env .env
 
 # Expose FastAPI default port
 EXPOSE 8000

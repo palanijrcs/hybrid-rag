@@ -3,7 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-load_dotenv(BASE_DIR / ".env", override=True)
+load_dotenv(BASE_DIR / ".env", override=False)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 NEO4J_URI = os.getenv("NEO4J_URI", "")

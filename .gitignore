@@ -33,3 +33,10 @@ uploads/
 # Streamlit Configuration & Local State
 # ============================================
 .streamlit/
+.env
+.env.*
+data/
+uploads/
+*.tar.gz
+*.bak
+*.aura-bak
